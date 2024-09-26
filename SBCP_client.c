@@ -102,7 +102,8 @@ struct SBCP_packet decode_data(char* buffer_input)
  else if (rec.header.type ==NAK)
  {
     printf("NAK received\n");
-    printf("Username already present");
+    printf("reason: %s\n",rec.attribute.payload.message);
+    //printf("Username already present");
     exit(0);
  }
  else

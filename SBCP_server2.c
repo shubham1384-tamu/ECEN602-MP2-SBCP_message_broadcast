@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define MAX_CLIENTS 5
+#define MAX_CLIENTS 3
 #define BUFFER_SIZE 2048
 
 #define JOIN    2
@@ -58,6 +58,7 @@ struct SBCP_packet decode_data(char* buffer_input) {
 
 int client_sockets[MAX_CLIENTS];
 char client_hostnames[MAX_CLIENTS][20] = {0};
+int clients_connected=0;
 pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void send_nak_message(int sock, const char* reason) {
@@ -115,6 +116,7 @@ void *client_handler(void *socket_desc) {
 
     if (read_size == 0) {
         puts("Client disconnected");
+        clients_connected-=1;
     } else if (read_size == -1) {
         perror("recv failed");
     }
@@ -154,7 +156,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    listen(socket_desc, 3);
+    listen(socket_desc, MAX_CLIENTS);
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
 
@@ -165,14 +167,26 @@ int main(int argc, char *argv[]) {
         new_sock = malloc(1);
         *new_sock = new_socket;
 
+        //printf("Num of clients connected: %d\n",clients_connected);
+        if(clients_connected==MAX_CLIENTS)
+        {
+            printf("Max limit reached");
+            clients_connected+=1;  //later this value is decremented
+            send_nak_message(new_socket, "Maximum limit reached\n");
+        }
+        else
+        {
         pthread_mutex_lock(&client_mutex);
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if (client_sockets[i] == 0) {
                 client_sockets[i] = new_socket;
+                clients_connected+=1;
                 break;
             }
         }
+        printf("Num of clients connected: %d\n",clients_connected);
         pthread_mutex_unlock(&client_mutex);
+        }
 
         if (pthread_create(&sniffer_thread, NULL, client_handler, (void*) new_sock) < 0) {
             perror("could not create thread");
