@@ -13,6 +13,7 @@
 #define JOIN    2
 #define SEND    4
 #define FWD     3
+#define NAK     5
 
 char username[16];
 char buff[10000];
@@ -96,11 +97,19 @@ struct SBCP_packet decode_data(char* buffer_input)
     rec.header.version=h_version;
     printf("Packet decoded: %d:%d:%d:%s:%s\n",rec.header.type,rec.header.length,rec.header.version,rec.attribute.payload.username,rec.attribute.payload.message);
  //int valread=read(client_sock, buffer_input, sizeof(buffer_input));
+ if(rec.header.type == JOIN)
+ printf("username %s joined\n",rec.attribute.payload.username);
+ else if (rec.header.type ==NAK)
+ {
+    printf("NAK received\n");
+    printf("Username already present");
+    exit(0);
+ }
+ else
  printf("Message from %s: %s\n",rec.attribute.payload.username,rec.attribute.payload.message);
  //printf("type= %d\n",rec.header.type);
  //sscanf(buffer_input,"%d:%d:%d:%s",&header,&type,&version,username);
- if(rec.header.type == JOIN)
- printf("username %s joined\n",rec.attribute.payload.username);
+ 
  return rec;
  //return valread;
 }
