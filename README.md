@@ -5,6 +5,11 @@ This project implements broadcasting of client messages like a group chat using 
 
 If a client tries to connect, the server will only allow the client if the username is unique or the client is reconnecting(previously connected to server). Client gets the status of connection based on ACK/NACK received from the server.
 
+## Steps for execution
+1. run "make all"
+2. To run server: use "make echos"
+3. To run client: Use "make echo"
+
 ## Test Case Execution
 
 1. Normal operation of the chat 
@@ -42,7 +47,19 @@ Client#3 side
 
 3. server allows a previously used username to be reused
 
-In this test case, clients "shubh" and "ibrahim" connects to the client and then it disconnects. "shubh" is disconnected and later able to connect from another terminal
+In this test case, clients "shubh" and "ibrahim" connects to the client and then it disconnects. "shubh" is disconnected and later able to connect from another terminal.
+
+Server side
+![Test Case 3 server screenshot](Screenshots/TS3_server.png)
+
+Client#1 side
+![Test Case 3 client screenshot](Screenshots/TS3_client1.png)
+
+Client#2 side
+![Test Case 3 client screenshot](Screenshots/TS3_client2.png)
+
+Client#3 side
+![Test Case 2 client screenshot](Screenshots/TS3_client3.png)
 
 4. server rejects the client because it exceeds the maximum number of clients 
 allowed
@@ -65,3 +82,11 @@ Client#4 side (Rejected by server)
 ![Test Case 4 client screenshot](Screenshots/TS4_client4.png)
 
 5. Bonus feature
+
+Test Case 2 and 3 implements NACK to get feedback from the server.
+
+## Contributions
+
+Shubham Santosh Kumar(UIN: 835008989): Implemented Server architecture
+
+Ibrahim Shahbaz(UIN: 236001615): Implemented client architecture

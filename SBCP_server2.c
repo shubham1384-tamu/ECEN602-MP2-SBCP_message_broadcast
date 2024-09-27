@@ -8,9 +8,6 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <errno.h>
-#include <netdb.h>
-
-
 
 #define MAX_CLIENTS 3
 #define BUFFER_SIZE 2048
@@ -54,9 +51,9 @@ struct SBCP_packet decode_data(char* buffer_input) {
     rec.header.type=h_type;
     rec.header.length=h_len;
     rec.header.version=h_version;
-    printf("Packet decoded: Type=%d, Length=%d, Version=%d, Username=%s, Message=%s\n",
+    /*printf("Packet decoded: Type=%d, Length=%d, Version=%d, Username=%s, Message=%s\n",
            rec.header.type, rec.header.length, rec.header.version,
-           rec.attribute.payload.username, rec.attribute.payload.message);
+           rec.attribute.payload.username, rec.attribute.payload.message);*/
     return rec;
 }
 
@@ -68,13 +65,13 @@ pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void send_nak_message(int sock, const char* reason) {
     char nak_message[BUFFER_SIZE];
-    int msg_len = snprintf(nak_message, sizeof(nak_message), "5:0:3::%s", reason);
+    int msg_len = snprintf(nak_message, sizeof(nak_message), "5:0:3:NA:%s", reason);
     send(sock, nak_message, msg_len, 0);
 }
 void send_stat_message(int sock, const char* status) {
     char stat_message[BUFFER_SIZE];
     printf("Stat message: %s\n",stat_message);
-    int msg_len = snprintf(stat_message, sizeof(stat_message), "4:0:3::%s", status);
+    int msg_len = snprintf(stat_message, sizeof(stat_message), "4:0:3:NA:%s", status);
     send(sock, stat_message, msg_len, 0);
 }
 
@@ -98,7 +95,7 @@ void *client_handler(void *socket_desc) {
 
             if (username_found) {
                 printf("Username %s is already taken. Disconnecting...\n", packet.attribute.payload.username);
-                send_nak_message(sock, "Username is already taken");
+                send_nak_message(sock, "Username_is_already_taken");
                 pthread_mutex_unlock(&client_mutex);
                 break;  // Exit the loop and end thread
             } else {
@@ -149,95 +146,27 @@ void *client_handler(void *socket_desc) {
 }
 
 int main(int argc, char *argv[]) {
+    int socket_desc, new_socket, c, *new_sock;
+    struct sockaddr_in server, client;
 
-    //Handling IPv4 and IPV6
-    struct addrinfo GEN_IPv4_6, *res, *p;
-    int status;
-    char ipstr[INET6_ADDRSTRLEN];
-
-    if (argc != 2) {
-    fprintf(stderr,"usage: showip hostname\n");
-    return 1;
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_desc == -1) {
+        printf("Could not create socket");
+        return 1;
     }
 
-    memset(&GEN_IPv4_6, 0, sizeof GEN_IPv4_6);
-    GEN_IPv4_6.ai_family = AF_UNSPEC; //For IPv4 adn IPv6 AF_INET or AF_INET6 to force version
-    GEN_IPv4_6.ai_socktype = SOCK_STREAM;
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons(8888);
 
-    //check if there is error in IPV4 or IPv6
-    if ((status = getaddrinfo(argv[1], NULL, &GEN_IPv4_6, &res)) != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-    return 2;
-}
-    for(p = res;p != NULL; p = p->ai_next) {
-        void *addr;
-        char *ipver;
-        int socket_desc, new_socket, c, *new_sock;
-        struct addrinfo *pp;
-
-        // we should handle Client too
-        struct sockaddr_in client;
-
-        pp=p->ai_family;
-
-        // get the pointer to the address itself,
-        // different fields in IPv4 and IPv6:
-        if (pp == AF_INET) { // IPv4
-            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
-            server = &(ipv4->sin_addr);
-            ipver = "IPv4";
-            server.sin_family = AF_INET;
-            server.sin_addr.s_addr = argv[1];
-            server.sin_port = htons(8888);
-            //create a socket that is compatible with IPv4
-            socket_desc = socket(pp, GEN_IPv4_6.ai_socktype, 0);
-            if (socket_desc == -1) {
-                printf("Could not create socket");
-                return 1;
-                            }
-            if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
-                perror("bind failed. Error");
-                return 1;
-                            }
-
-        } else { // IPv6
-            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
-            server = &(ipv6->sin6_addr);
-            ipver = "IPv6";
-            server.sin_family = AF_INET6;
-            server.sin_addr.s_addr = argv[1];
-            server.sin_port = htons(8888);
-            //create a socket that is compatible with IPv4 and IPV6
-            socket_desc = socket(pp, GEN_IPv4_6.ai_socktype, 0);
-            if (socket_desc == -1) {
-                printf("Could not create socket");
-                return 1;
-                            }
-            if (bind(socket_desc, (struct sockaddr_in6 *)&server, sizeof(server)) < 0) {
-                perror("bind failed. Error");
-                return 1;
-                            }
-        }
-
-        // convert the IP to a string and print it:
-        //inet_ntop(pp, server, ipstr, sizeof ipstr);
-        //printf("  %s: %s\n", ipver, ipstr);
-}
-
+    if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        perror("bind failed. Error");
+        return 1;
+    }
 
     listen(socket_desc, MAX_CLIENTS);
     puts("Waiting for incoming connections...");
-
-    if (ipver == "IPv4") {
-                c = sizeof(struct sockaddr_in);
-                            }
-    else {
-        c = sizeof(struct sockaddr_in6)
-
-    }
-    
-
-
+    c = sizeof(struct sockaddr_in);
 
     while ((new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c))) {
         puts("Connection accepted");
@@ -251,7 +180,7 @@ int main(int argc, char *argv[]) {
         {
             printf("Max limit reached");
             clients_connected+=1;  //later this value is decremented
-            send_nak_message(new_socket, "Maximum limit reached\n");
+            send_nak_message(new_socket, "Maximum_limit_reached\n");
         }
         else
         {

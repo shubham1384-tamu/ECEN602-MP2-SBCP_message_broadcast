@@ -6,9 +6,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
-#include <errno.h>
-#include <netdb.h>
-
 
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8888
@@ -99,7 +96,7 @@ struct SBCP_packet decode_data(char* buffer_input)
     rec.header.type=h_type;
     rec.header.length=h_len;
     rec.header.version=h_version;
-    printf("Packet decoded: %d:%d:%d:%s:%s\n",rec.header.type,rec.header.length,rec.header.version,rec.attribute.payload.username,rec.attribute.payload.message);
+    //printf("Packet decoded: %d:%d:%d:%s:%s\n",rec.header.type,rec.header.length,rec.header.version,rec.attribute.payload.username,rec.attribute.payload.message);
  //int valread=read(client_sock, buffer_input, sizeof(buffer_input));
  if(rec.header.type == JOIN)
  printf("username %s joined\n",rec.attribute.payload.username);
@@ -171,99 +168,32 @@ void *receive_message(void *socket_desc) {
 
 int main(int argc, char *argv[]) {
     int sock;
-    int socket_desc;
+    struct sockaddr_in server;
     char message[BUFFER_SIZE], server_reply[BUFFER_SIZE];
     
-    //Handling IPv4 and IPV6
-    struct addrinfo GEN_IPv4_6, *res, *p;
-    int status;
-    char ipstr[INET6_ADDRSTRLEN];
-
-    if (argc != 2) {
-    fprintf(stderr,"usage: showip hostname\n");
-    return 1;
+    // Create socket
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
+        printf("Could not create socket");
     }
+    puts("Socket created");
+    
+    server.sin_addr.s_addr = inet_addr(SERVER_IP);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(SERVER_PORT);
 
-    memset(&GEN_IPv4_6, 0, sizeof GEN_IPv4_6);
-    GEN_IPv4_6.ai_family = AF_UNSPEC; //For IPv4 adn IPv6 AF_INET or AF_INET6 to force version
-    GEN_IPv4_6.ai_socktype = SOCK_STREAM;
-
-    //check if there is error in IPV4 or IPv6
-    if ((status = getaddrinfo(argv[1], NULL, &GEN_IPv4_6, &res)) != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
-    return 2;
-}
-    for(p = res;p != NULL; p = p->ai_next) {
-        void *addr;
-        char *ipver;
-        
-        struct addrinfo *pp;
-
-        pp=p->ai_family;
-
-        // get the pointer to the address itself,
-        // different fields in IPv4 and IPv6:
-        if (pp == AF_INET) { // IPv4
-            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
-            struct sockaddr_in server*;
-            server= &(ipv4->sin_addr);
-            ipver= "IPv4";
-            server.sin_family = AF_INET;
-            server.sin_addr.s_addr = argv[1];
-            server.sin_port = htons(8888);
-            //create a socket that is compatible with IPv4
-            socket_desc = socket(pp, GEN_IPv4_6.ai_socktype, 0);
-            if (socket_desc == -1) {
-                printf("Could not create socket");
-                return 1;
-                            }
-            if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
-                perror("bind failed. Error");
-                return 1;
-                            }
-            // Connect to remote server
-            if (connect(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
-                perror("connect failed. Error");
-                return 1;
-                        }
-
-
-        } else { // IPv6
-            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
-            server = &(ipv6->sin6_addr);
-            ipver = "IPv6";
-            server.sin_family = AF_INET6;
-            server.sin_addr.s_addr = argv[1];
-            server.sin_port = htons(8888);
-            //create a socket that is compatible with IPv4 and IPV6
-            socket_desc = socket(pp, GEN_IPv4_6.ai_socktype, 0);
-            if (socket_desc == -1) {
-                printf("Could not create socket");
-                return 1;
-                            }
-            if (bind(socket_desc, (struct sockaddr_in6 *)&server, sizeof(server)) < 0) {
-                perror("bind failed. Error");
-                return 1;
-                            }
-                        // Connect to remote server
-            if (connect(socket_desc, (struct sockaddr_in6 *)&server, sizeof(server)) < 0) {
-                perror("connect failed. Error");
-                return 1;
-                        }
-        }
-
-        // convert the IP to a string and print it:
-        //inet_ntop(pp, server, ipstr, sizeof ipstr);
-        //printf("  %s: %s\n", ipver, ipstr);
+    // Connect to remote server
+    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        perror("connect failed. Error");
+        return 1;
     }
-
     
     puts("Connected\n");
 
     // Create a thread for receiving messages from the server
     pthread_t recv_thread;
     int *new_sock = malloc(1);
-    *new_sock = socket_desc;
+    *new_sock = sock;
     if (pthread_create(&recv_thread, NULL, receive_message, (void*) new_sock) < 0) {
         perror("could not create thread");
         return 1;
@@ -287,7 +217,7 @@ int main(int argc, char *argv[]) {
     int len=strlen(str_join);
     */
     printf("Buffer: %s\n",str_join);
-    send(socket_desc, str_join, len, 0);
+    send(sock, str_join, len, 0);
     // Keep communicating with server
     while(1) {
         printf("Enter message : ");
@@ -302,12 +232,12 @@ int main(int argc, char *argv[]) {
         //printf("Message to be sent: %s\n",msg.attribute.payload.message);
         // Send some data
         //if (send(sock, message, strlen(message), 0) < 0) {
-        if (send(socket_desc, msg_packet, strlen(msg_packet), 0) < 0) {
+        if (send(sock, msg_packet, strlen(msg_packet), 0) < 0) {
             puts("Send failed");
             return 1;
         }
     }
     
-    close(socket_desc);
+    close(sock);
     return 0;
 }
