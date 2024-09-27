@@ -16,6 +16,7 @@
 #define SEND    4
 #define FWD     3
 #define NAK     5
+#define ACK     7
 
 struct SBCP_header {
     unsigned int version:9;
@@ -66,6 +67,12 @@ void send_nak_message(int sock, const char* reason) {
     int msg_len = snprintf(nak_message, sizeof(nak_message), "5:0:3::%s", reason);
     send(sock, nak_message, msg_len, 0);
 }
+void send_stat_message(int sock, const char* status) {
+    char stat_message[BUFFER_SIZE];
+    printf("Stat message: %s\n",stat_message);
+    int msg_len = snprintf(stat_message, sizeof(stat_message), "4:0:3::%s", status);
+    send(sock, stat_message, msg_len, 0);
+}
 
 void *client_handler(void *socket_desc) {
     int sock = *(int*)socket_desc;
@@ -96,7 +103,7 @@ void *client_handler(void *socket_desc) {
                 for (int i = 0; i < MAX_CLIENTS; i++) {
                     if (client_sockets[i] == sock) {
                         strcpy(client_hostnames[i], packet.attribute.payload.username);
-                        printf("Username added: %s\n", client_hostnames[i]);
+                        printf("Username added: %s\n", packet.attribute.payload.username);
                         break;
                     }
                 }
