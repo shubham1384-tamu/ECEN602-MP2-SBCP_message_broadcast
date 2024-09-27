@@ -8,6 +8,9 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <errno.h>
+#include <netdb.h>
+
+
 
 #define MAX_CLIENTS 3
 #define BUFFER_SIZE 2048
@@ -145,27 +148,95 @@ void *client_handler(void *socket_desc) {
 }
 
 int main(int argc, char *argv[]) {
-    int socket_desc, new_socket, c, *new_sock;
-    struct sockaddr_in server, client;
 
-    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_desc == -1) {
-        printf("Could not create socket");
-        return 1;
+    //Handling IPv4 and IPV6
+    struct addrinfo GEN_IPv4_6, *res, *p;
+    int status;
+    char ipstr[INET6_ADDRSTRLEN];
+
+    if (argc != 2) {
+    fprintf(stderr,"usage: showip hostname\n");
+    return 1;
     }
 
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(8888);
+    memset(&GEN_IPv4_6, 0, sizeof GEN_IPv4_6);
+    GEN_IPv4_6.ai_family = AF_UNSPEC; //For IPv4 adn IPv6 AF_INET or AF_INET6 to force version
+    GEN_IPv4_6.ai_socktype = SOCK_STREAM;
 
-    if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        perror("bind failed. Error");
-        return 1;
-    }
+    //check if there is error in IPV4 or IPv6
+    if ((status = getaddrinfo(argv[1], NULL, &GEN_IPv4_6, &res)) != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+    return 2;
+}
+    for(p = res;p != NULL; p = p->ai_next) {
+        void *addr;
+        char *ipver;
+        int socket_desc, new_socket, c, *new_sock;
+        struct addrinfo *pp;
+
+        // we should handle Client too
+        struct sockaddr_in client;
+
+        pp=p->ai_family;
+
+        // get the pointer to the address itself,
+        // different fields in IPv4 and IPv6:
+        if (pp == AF_INET) { // IPv4
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+            server = &(ipv4->sin_addr);
+            ipver = "IPv4";
+            server.sin_family = AF_INET;
+            server.sin_addr.s_addr = argv[1];
+            server.sin_port = htons(8888);
+            //create a socket that is compatible with IPv4
+            socket_desc = socket(pp, GEN_IPv4_6.ai_socktype, 0);
+            if (socket_desc == -1) {
+                printf("Could not create socket");
+                return 1;
+                            }
+            if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0) {
+                perror("bind failed. Error");
+                return 1;
+                            }
+
+        } else { // IPv6
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+            server = &(ipv6->sin6_addr);
+            ipver = "IPv6";
+            server.sin_family = AF_INET6;
+            server.sin_addr.s_addr = argv[1];
+            server.sin_port = htons(8888);
+            //create a socket that is compatible with IPv4 and IPV6
+            socket_desc = socket(pp, GEN_IPv4_6.ai_socktype, 0);
+            if (socket_desc == -1) {
+                printf("Could not create socket");
+                return 1;
+                            }
+            if (bind(socket_desc, (struct sockaddr_in6 *)&server, sizeof(server)) < 0) {
+                perror("bind failed. Error");
+                return 1;
+                            }
+        }
+
+        // convert the IP to a string and print it:
+        //inet_ntop(pp, server, ipstr, sizeof ipstr);
+        //printf("  %s: %s\n", ipver, ipstr);
+}
+
 
     listen(socket_desc, MAX_CLIENTS);
     puts("Waiting for incoming connections...");
-    c = sizeof(struct sockaddr_in);
+
+    if (ipver == "IPv4") {
+                c = sizeof(struct sockaddr_in);
+                            }
+    else {
+        c = sizeof(struct sockaddr_in6)
+
+    }
+    
+
+
 
     while ((new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c))) {
         puts("Connection accepted");
