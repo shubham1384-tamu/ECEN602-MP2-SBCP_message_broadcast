@@ -18,6 +18,7 @@
 char username[16];
 char buff[10000];
 
+/**/
 char msg_packet[10000];
 struct SBCP_header
 {

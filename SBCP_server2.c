@@ -57,6 +57,7 @@ struct SBCP_packet decode_data(char* buffer_input) {
     return rec;
 }
 
+
 int client_sockets[MAX_CLIENTS];
 char client_hostnames[MAX_CLIENTS][20] = {0};
 int clients_connected=0;

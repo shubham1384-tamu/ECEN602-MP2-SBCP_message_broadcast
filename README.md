@@ -1,7 +1,9 @@
 # ECEN602-MP2-SBCP_message_broadcast
 ECEN 602 Machine Problem-2
 
+This project implements broadcasting of client messages like a group chat using a server communicating using SBCP protocol.
 
+If a client tries to connect, the server will only allow the client if the username is unique or the client is reconnecting(previously connected to server). Client gets the status of connection based on ACK/NACK received from the server.
 
 ## Test Case Execution
 
@@ -38,3 +40,28 @@ Client#3 side
 ![Test Case 2 client screenshot](Screenshots/TS2_client3.png)
 
 
+3. server allows a previously used username to be reused
+
+In this test case, clients "shubh" and "ibrahim" connects to the client and then it disconnects. "shubh" is disconnected and later able to connect from another terminal
+
+4. server rejects the client because it exceeds the maximum number of clients 
+allowed
+
+In this test case, the server's max limit is set to 3. The initial 3 clients are able to connect to the client while the 4th client gets NAK message with reason "Maximum limit reached".
+
+Server side
+![Test Case 4 server screenshot](Screenshots/TS4_server.png)
+
+Client#1 side
+![Test Case 4 client screenshot](Screenshots/TS4_client1.png)
+
+Client#2 side
+![Test Case 4 client screenshot](Screenshots/TS4_client2.png)
+
+Client#3 side
+![Test Case 4 client screenshot](Screenshots/TS4_client3.png)
+
+Client#4 side (Rejected by server)
+![Test Case 4 client screenshot](Screenshots/TS4_client4.png)
+
+5. Bonus feature
